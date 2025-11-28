@@ -1,0 +1,183 @@
+"""Импорт"""
+import csv
+import matplotlib.pyplot as plt
+from os import listdir
+
+
+dm = 1e-3  # Условная погонная масса
+p_atm = 101325  # атмосферное давление [Па]
+
+# Указываем путь к директории
+directory = "E:\\Science\\ShockWaves\\Data\\linses\\"
+base = "E:\\Science\\ShockWaves\\Data\\linses\\base\\"
+
+# Путь файла: невязкий, смесь без решетки, решетка, смесь с решеткой
+lins_dir = [
+    "0_helium_convex\\",
+    "1_helium_concave\\",
+    "2_freon_convex\\",
+    "3_freon_concave\\",
+]
+type_exp = 3
+
+path = [
+    directory + "base\\" + "NVIS-",
+    directory + "base\\" + "DNVIS-",
+    directory + "base\\" + "DVIS-",
+    directory + lins_dir[type_exp] + "MVIS-",
+    directory + lins_dir[type_exp] + "DMVIS-",
+]
+ad = ["000", "00", "0"]
+# Получаем список файлов
+folder = listdir(base)
+# Указать кол-во  экспериментов в base
+num_exp = 3
+# Шаг по времени и количество временнЫх файлов
+dt = 1e-7
+N_time = int(len(folder) / num_exp)
+
+
+"""Блок функций"""
+
+# Присваивание имени с пересчетом
+def file_name(i, path):
+    i += 1
+    if i < 10:
+        add = ad[0] + str(i)
+
+    elif i >= 10 and i < 100:
+        add = ad[1] + str(i)
+
+    elif i >= 100 and i < 1000:
+        add = ad[2] + str(i)
+    else:
+        add = str(i)
+
+    name = path + add
+    return name
+
+
+# Чтение файла и запись данных в переменные
+def reading(i, path):
+    with open(file_name(i, path), mode="r") as file:
+        data = csv.reader(file)
+        next(data)
+
+        for lines in data:
+            if float(lines[1]) == 4.000000000e-02:
+                p[i].append(float(lines[3]))
+                y[i].append(float(lines[2]) * 1e3)
+
+    return y, p
+
+
+# Получение координаты, давления, ускорения, скорости, перемещения правой стенки
+def values(exp):
+    global y, p
+    y, p, a, v, x = [], [], [], [], []
+    a_sum, v_sum, x_sum = [0] * N_time, [0] * N_time, [0] * N_time
+
+    for i in range(N_time):
+        y.append([])
+        p.append([])
+        a.append([])
+        v.append([])
+        x.append([])
+        y, p = reading(i, path[exp])
+
+        for j in range(len(y[i])):
+            if i == 0:
+                x[i].append(0)
+                v[i].append(0)
+            if i > 0:
+                x[i].append(x[i - 1][j] + 0.5 * dt * v[i - 1][j])
+
+            # ускорение, скорость, перемещение
+            a[i].append((p[i][j] - p_atm) * max(y[i]) / dm)
+            if i > 0:
+                v[i].append(v[i - 1][j] + dt * a[i][j])
+            x[i][j] += 0.5 * dt * v[i][j]
+
+            a_sum[i] += a[i][j] / len(y[0])
+            v_sum[i] += v[i][j] / len(y[0])
+            x_sum[i] += x[i][j] / len(y[0])
+
+    return y, p, a, v, x, a_sum, v_sum, x_sum
+
+
+# Разность элементов массива
+def difference(w, u):
+    return w - u
+
+"""Основные расчеты"""
+# Список итераций по времени
+t = [0] * N_time
+for i in range(N_time):
+    t[i] = i
+
+y0, p0, a0, v0, x0, a_sum0, v_sum0, x_sum0 = values(0)
+y1, p1, a1, v1, x1, a_sum1, v_sum1, x_sum1 = values(1)
+y2, p2, a2, v2, x2, a_sum2, v_sum2, x_sum2 = values(2)
+y3, p3, a3, v3, x3, a_sum3, v_sum3, x_sum3 = values(3)
+y4, p4, a4, v4, x4, a_sum4, v_sum4, x_sum4 = values(4)
+
+x_dif1 = list(map(difference, x_sum1, x_sum0))
+x_dif2 = list(map(difference, x_sum2, x_sum0))
+x_dif3 = list(map(difference, x_sum3, x_sum0))
+x_dif4 = list(map(difference, x_sum4, x_sum0))
+
+# Создание объекта - рисунок
+fig, ax = plt.subplots(figsize=(14, 6))
+
+# Интегральная характеристика
+ax.plot(t, x_dif1, color="red")
+ax.plot(t, x_dif2, color="purple")
+ax.plot(t, x_dif3, color="green")
+ax.plot(t, x_dif4, color="black")
+
+# Оформление графика
+ax.set_title('Относительное перемещение "фиктивной" стенки')
+ax.legend(
+    [
+        "Для невязкого с решеткой",
+        "Для вязкого с решеткой",
+        "Для вязкой смеси без решетки",
+        "Для вязкой смеси с решеткой",
+    ],
+    loc=3,
+)
+ax.grid()
+ax.set_xlim(550, N_time)
+ax.set_xlabel("t-step")
+ax.set_ylabel("x, [m]")
+
+# Создание объекта - рисунок
+fig, ax = plt.subplots(figsize=(14, 6))
+
+# Интегральная характеристика
+ax.plot(t, x_sum0, color="blue")
+ax.plot(t, x_sum1, color="red")
+ax.plot(t, x_sum2, color="purple")
+ax.plot(t, x_sum3, color="green")
+ax.plot(t, x_sum4, color="black")
+
+# Оформление графика
+ax.set_title('Абсолютное перемещение "фиктивной" стенки')
+ax.legend(
+    [
+        "Невязкий без смеси и решетки",
+        "Невязкий без смеси с решеткой",
+        "Вязкий без смеси c решеткой",
+        "Вязкая смесь без решетки",
+        "Вязкая смесь с решеткой",
+    ],
+    loc=2,
+)
+ax.grid()
+ax.set_xlim(550, N_time)
+ax.set_xlabel("t-step")
+ax.set_ylabel("x, [m]")
+
+
+# Отображение холста
+plt.show()
