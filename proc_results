@@ -1,4 +1,6 @@
-"""Импорт"""
+"""Скрипт для обработки результатов газодинамических расчетов"""
+
+# Импорт
 import csv
 import matplotlib.pyplot as plt
 from os import listdir
