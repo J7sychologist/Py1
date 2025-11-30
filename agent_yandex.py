@@ -1,3 +1,5 @@
+# ИИ-агент, yandexGPT, yandex_cloud, prompt, тест
+
 import os
 import asyncio
 import json
@@ -82,4 +84,5 @@ async def interactive_chat():
             print(f"\n❌ Ошибка: {e}")
 
 if __name__ == "__main__":
+
     asyncio.run(interactive_chat())
